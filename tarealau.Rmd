@@ -1,0 +1,151 @@
+---
+title: "Análisis de las Características de Héroes y Villanos"
+author: "Lau"
+date: "2-9-2025"
+output:
+  html_document:
+    toc: true
+    code_folding: hide
+---
+
+```{r library, include=FALSE}
+# Descargamos las librerías necesarias 
+library(dplyr)
+library(ggplot2)
+library(knitr)
+library(DT)
+```
+
+```{r load_data}
+# Cargamos el archivo .csv que usaremos
+datos_heroes <- read.csv("heroes_information.csv")
+```
+
+Esta investigación se basa de un data frame de Súper Héroes y Villanos de diferentes editoriales. La data incluye características físicas como su altura, color de ojos, peso, así como están diferenciados en sus universos, ya sea por su raza, si son "Buenos", "Malos" o "Neutrales".
+
+```{r load2_data}
+# Mostraremos el data frame completo con "DT"
+datatable(datos_heroes)
+```
+
+## 1. Limpieza del data frame
+
+Para el data frame a utilizar, es necesario limpiar los datos que no estén correctos, para así poder tener mejores resultados. Y conmprobamos que los números estén correctos con **summary**, esto nos dará un resumen estadístico con todas nuestras variables.
+
+```{r clean_data}
+# Reemplazamos los datos que estén errados
+datos_heroes[datos_heroes == "-99"] <- NA
+datos_heroes[datos_heroes == "-"] <- NA
+
+# Comprobamos que la data está limpia con un resumen
+summary(datos_heroes)
+```
+
+## 2. Definir paletas de colores
+
+```{r paleta_data, echo=TRUE}
+# Para mejor visualización de los gráficos a presentar, le asignaré paletas de colores a este trabajo
+paleta_gemas_infinito <- c("#3FA0FF","#D8152F","#FFEE99", "#BB00BB","#86FF86","#FF8F33")
+paleta_hero2 <- c("#1E8E99", "#CC5800","#000000","#490092","#666666")
+paleta_hero3 <- c("#A51209","#0055AA","#FFCE45","#44B05B", "#120976")
+```
+
+## 3. Relaciones entre nuestras variables
+
+Con un data frame que trata de Súper Héroes, las variables son miles. Pero, nos concentraremos en observar las corelaciones entre la misma data. Veremos si unos datos afectan a otros y el motivo, así mismo como están estas distribuciones de datos.
+
+### ¿Cómo se distribuye el género en los Héroes?
+
+```{r gender_data}
+Dist_gender <- datos_heroes %>% 
+  group_by(Gender) %>% 
+  summarise(count = n())
+datatable(Dist_gender, 
+          caption = "Distribución de Género entre Héroes")
+```
+
+Podemos observar como hay mayor población masculina que femenina, ahora, nos preguntamos 
+
+### ¿El género está relacionada con su altura?
+
+```{r genheig_data}
+Relation_gender <- datos_heroes %>%
+group_by(Gender) %>%
+summarise(Promedio_Altura = mean(Height, na.rm = TRUE),
+          Promedio_Mediana = median(Height, na.rm = TRUE),
+          num_heroes = n(), groups = "drop")
+datatable(Relation_gender, 
+          caption = "Relación de la altura con los géneros")
+```
+
+Gráfico de barras, para poder visualizar mejor los resultados
+
+```{r genheig_grafic, fig.width=5, fig.height=4}
+ggplot(Relation_gender, aes(x = Gender, y = Promedio_Altura, fill = Gender)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = paleta_gemas_infinito) +
+  labs(title = "Altura Promedio de Héroes por Género", x = "Género", y = "Altura (Cm)") +
+  theme_minimal()
+```
+
+Observamos que, la altura de los súper héroes en general **Sí** se encuentra relacionada por su género, siendo los personajes masculinos notablemente más altos que los personajes femeninos. Estos resultados pueden atribuirse a que generalmente los hombres (y más héroes) han sido más grandes y altos que las mujeres, por estereotipos o por diseño del personaje.
+
+Seguimos con las relaciones entre variables
+
+## 4. Marvel VS DC
+
+```{r, echo=FALSE, fig.align='center', out.width="50%"}
+knitr:: include_graphics("https://i.blogs.es/160746/marvel-vs-dc-2024/500_333.webp")
+```
+
+Me pregunto, si la altura de los héroes se encuentra relacionada con el género, ¿que diferencias podrían haber entre Marvel y DC?
+
+### ¿El género se verá relacionado con el Publisher (Editorial)?
+
+```{r genero_publisher_relacion}
+generop <- datos_heroes %>%
+  #Filtro solamente Marvel y DC, ya que en eso me estoy enfocando
+  filter(Publisher %in% c("Marvel Comics", "DC Comics")) %>%
+  group_by(Gender, Publisher) %>%
+  count() %>%
+arrange(desc(n)) 
+datatable(generop, caption = "Relación del Género y las Editoriales")
+```
+
+Gráfica de Barras entre Marvel y DC
+
+```{r marveldc_grafic, fig.width=5, fig.height=4}
+ggplot(generop, aes(x = Publisher, y = n, fill = Gender)) +
+  geom_bar(stat = "identity",position = "dodge") +
+  scale_fill_manual(values = paleta_hero2) +
+  labs(title = "Distribución de Géneros por Editoriales", x = "Editorial", y = "Número de Personajes") +
+  theme_minimal()
+```
+
+Podemos darnos cuenta que en general, hay casi el doble de personajes masculinos que femeninos, esta, es una de las razones por las que hay más de estos personajes masculinos que femeninos, sin embargo, también podemos acotar que la mayoría de estos personajes fueron creados en épocas donde a las mujeres no se les asociaba los papeles de héroes y salvadores, dejándolas de un lado.
+
+Si seguimos relacionando Marvel y DC, creo otra incógnita: 
+
+### ¿En que Editorial hay más villanos o más héroes?
+
+```{r alignment_data}
+alignmentd <- datos_heroes %>%
+  filter(Publisher %in% c("Marvel Comics", "DC Comics")) %>%
+  group_by(Publisher, Alignment) %>%
+  count() %>%
+  arrange(desc(n))
+datatable(alignmentd, caption = "Villanos y Héroes en cada Editorial")
+```
+
+```{r alignment_grafic_data, fig.width=5, fig.height=4}
+ggplot(alignmentd, aes(x = Publisher, y = n, fill = Alignment)) +
+  geom_bar(stat = "identity",position = "dodge") +
+  scale_fill_manual(values = paleta_hero3) +
+  labs(title = "Distribución de Villanos y Héroes en cada Editorial", x = "Editorial", y = "Alignment") +
+  theme_minimal()
+```
+
+Analizando la data, demuestra que tanto como en Marvel y DC, los personajes buenos (good), son mayores en cantidad que los malos (bad), así como los neutrales (neutral). Podemos explicar estos resultados ya que, en la mayoría de comics o películas, la historia se centra en el bueno, o en el grupo de los buenos. Sus historias es más larga, profunda, generalmente, por cada villano hay un grupo de buenos.
+
+Además, podemos observar que en Marvel hay más villanos que en DC, esto también nos puede decir que el balance entre héroes y villanos no es igual en cada editorial.
+
