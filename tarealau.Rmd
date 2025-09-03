@@ -5,6 +5,7 @@ date: "2-9-2025"
 output:
   html_document:
     toc: true
+    toc_float: true
     code_folding: hide
 ---
 
@@ -14,6 +15,7 @@ library(dplyr)
 library(ggplot2)
 library(knitr)
 library(DT)
+library(tidyr)
 ```
 
 ```{r load_data}
@@ -32,9 +34,12 @@ datatable(datos_heroes)
 
 Para el data frame a utilizar, es necesario limpiar los datos que no estén correctos, para así poder tener mejores resultados. Y conmprobamos que los números estén correctos con **summary**, esto nos dará un resumen estadístico con todas nuestras variables.
 
+En esta investigación, los datos errados los asignaremos con un "NA", y para lo análisis que haremos no haremos uso de estos datos, esto para que todos los resultados sean confiables y exactos. 
+
 ```{r clean_data}
 # Reemplazamos los datos que estén errados
 datos_heroes[datos_heroes == "-99"] <- NA
+# Lo que haremos acá es asignarle el "NA" a los datos errados
 datos_heroes[datos_heroes == "-"] <- NA
 
 # Comprobamos que la data está limpia con un resumen
@@ -52,7 +57,7 @@ paleta_hero3 <- c("#A51209","#0055AA","#FFCE45","#44B05B", "#120976")
 
 ## 3. Relaciones entre nuestras variables
 
-Con un data frame que trata de Súper Héroes, las variables son miles. Pero, nos concentraremos en observar las corelaciones entre la misma data. Veremos si unos datos afectan a otros y el motivo, así mismo como están estas distribuciones de datos.
+Con un data frame que trata de Súper Héroes, las variables son miles. Pero, nos concentraremos en observar las correlaciones entre la misma data. Veremos si unos datos afectan a otros y el motivo, así mismo como están estas distribuciones de datos.
 
 ### ¿Cómo se distribuye el género en los Héroes?
 
@@ -70,6 +75,8 @@ Podemos observar como hay mayor población masculina que femenina, ahora, nos pr
 
 ```{r genheig_data}
 Relation_gender <- datos_heroes %>%
+  # Filtramos los NA 
+  filter(!is.na(Gender)) %>%
 group_by(Gender) %>%
 summarise(Promedio_Altura = mean(Height, na.rm = TRUE),
           Promedio_Mediana = median(Height, na.rm = TRUE),
@@ -106,6 +113,8 @@ Me pregunto, si la altura de los héroes se encuentra relacionada con el género
 generop <- datos_heroes %>%
   #Filtro solamente Marvel y DC, ya que en eso me estoy enfocando
   filter(Publisher %in% c("Marvel Comics", "DC Comics")) %>%
+  # Filtramos los NA 
+  filter(!is.na(Gender) & !is.na(Publisher)) %>%
   group_by(Gender, Publisher) %>%
   count() %>%
 arrange(desc(n)) 
@@ -122,7 +131,7 @@ ggplot(generop, aes(x = Publisher, y = n, fill = Gender)) +
   theme_minimal()
 ```
 
-Podemos darnos cuenta que en general, hay casi el doble de personajes masculinos que femeninos, esta, es una de las razones por las que hay más de estos personajes masculinos que femeninos, sin embargo, también podemos acotar que la mayoría de estos personajes fueron creados en épocas donde a las mujeres no se les asociaba los papeles de héroes y salvadores, dejándolas de un lado.
+Los resultados de este análisis nos demuestran que en general, hay casi el doble de personajes masculinos que femeninos, sin embargo, también podemos acotar que la mayoría de estos personajes fueron creados en épocas donde a las mujeres no se les asociaba los papeles de héroes y salvadores, de esta forma podríamos explicar el porqué de la mayor amplitud de Héroes que Villanos.
 
 Si seguimos relacionando Marvel y DC, creo otra incógnita: 
 
@@ -131,6 +140,8 @@ Si seguimos relacionando Marvel y DC, creo otra incógnita:
 ```{r alignment_data}
 alignmentd <- datos_heroes %>%
   filter(Publisher %in% c("Marvel Comics", "DC Comics")) %>%
+  # Filtramos los NA 
+  filter(!is.na(Publisher) & !is.na(Alignment)) %>%
   group_by(Publisher, Alignment) %>%
   count() %>%
   arrange(desc(n))
@@ -147,5 +158,42 @@ ggplot(alignmentd, aes(x = Publisher, y = n, fill = Alignment)) +
 
 Analizando la data, demuestra que tanto como en Marvel y DC, los personajes buenos (good), son mayores en cantidad que los malos (bad), así como los neutrales (neutral). Podemos explicar estos resultados ya que, en la mayoría de comics o películas, la historia se centra en el bueno, o en el grupo de los buenos. Sus historias es más larga, profunda, generalmente, por cada villano hay un grupo de buenos.
 
-Además, podemos observar que en Marvel hay más villanos que en DC, esto también nos puede decir que el balance entre héroes y villanos no es igual en cada editorial.
+Sin embargo, tenemos que tener en cuenta la proporción de Editoriales, Marvel tiene mas personajes que DC. Tomando esto en cuenta igualmente podríamos decir que Marvel tiene una mayor proporción de villanos en comparación con sus héroes, esto nos puede indicar que cada Editorial tiene un enfoque en sus historias diferentes, DC enfocándose más en sus héroes y Marvel en su amplio catálogo de villanos.
 
+
+## Editoriales vs Características
+
+Me pregunto, como estarán estos mundos ficticios distribuidos? Es decir, 
+
+### ¿Que clases de razas habrán en estas 2 editoriales?
+
+A continuación, mostraré las razas en el Universo Marvel
+
+```{r race_marvel}
+race_data <- datos_heroes %>%
+  #Filtro solamente Marvel, ya que iremos primero por esta Editorial
+  filter(Publisher %in% c("Marvel Comics")) %>%
+  # Filtramos los NA 
+  filter(!is.na(Race)) %>%
+  group_by(Race) %>%
+  count(name = "conteo_personajes") %>%
+  ungroup() %>%
+  arrange(desc(conteo_personajes))
+
+# Agrupar las razas con menos de 4 personajes en una categoría "Otras Razas"
+race_conteo_limpio <- race_data %>%
+  mutate(Race = ifelse(conteo_personajes < 4, "Otras Razas", Race)) %>%
+  group_by(Race) %>%
+  summarise(conteo_personajes = sum(conteo_personajes), .groups = 'drop')
+datatable(race_conteo_limpio, caption = "Tipos de razas en Marvel")
+```
+
+```{r race_grafic_marvel, fig.width=9, fig.height=6}
+ggplot(race_conteo_limpio, aes(x = "", y = "", fill = Race)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y", start = 0) +
+  labs(title = "Distribución de Razas en Marvel") +
+  # Añadir etiquetas con los porcentajes
+  geom_text(aes(label = paste0(round(conteo_personajes / sum(conteo_personajes) * 100), "%")),
+            position = position_stack(vjust = 0.5))
+```
