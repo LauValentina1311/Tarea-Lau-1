@@ -1,7 +1,7 @@
 ---
 title: "Análisis de las Características de Héroes y Villanos"
-author: "Lau"
-date: "2-9-2025"
+author: "Laurys Alvarez <3"
+date: "4 de Septiembre del 2025"
 output:
   html_document:
     toc: true
@@ -23,7 +23,7 @@ library(tidyr)
 datos_heroes <- read.csv("heroes_information.csv")
 ```
 
-Esta investigación se basa de un data frame de Súper Héroes y Villanos de diferentes editoriales. La data incluye características físicas como su altura, color de ojos, peso, así como están diferenciados en sus universos, ya sea por su raza, si son "Buenos", "Malos" o "Neutrales".
+Esta investigación está basada en un data frame de Súper Héroes y Villanos de diferentes editoriales. La data incluye características físicas como su altura, color de ojos, peso, así como están diferenciados en sus universos, ya sea por su raza, si son "Buenos", "Malos" o "Neutrales".
 
 ```{r load2_data}
 # Mostraremos el data frame completo con "DT"
@@ -34,7 +34,7 @@ datatable(datos_heroes)
 
 Para el data frame a utilizar, es necesario limpiar los datos que no estén correctos, para así poder tener mejores resultados. Y conmprobamos que los números estén correctos con **summary**, esto nos dará un resumen estadístico con todas nuestras variables.
 
-En esta investigación, los datos errados los asignaremos con un "NA", y para lo análisis que haremos no haremos uso de estos datos, esto para que todos los resultados sean confiables y exactos. 
+En esta investigación, los datos errados los asignaremos con un "NA", para los análisis que haremos no estaremos usando estos datos, esto para que todos los resultados sean confiables y exactos. 
 
 ```{r clean_data}
 # Reemplazamos los datos que estén errados
@@ -47,6 +47,8 @@ summary(datos_heroes)
 ```
 
 ## 2. Definir paletas de colores
+
+Para ofrecer una mejor visualización de los gráficos por presentar, asignaremos varias paletas de colores a este análisis
 
 ```{r paleta_data, echo=TRUE}
 # Para mejor visualización de los gráficos a presentar, le asignaré paletas de colores a este trabajo
@@ -63,6 +65,8 @@ Con un data frame que trata de Súper Héroes, las variables son miles. Pero, no
 
 ```{r gender_data}
 Dist_gender <- datos_heroes %>% 
+  # Filtramos los NA 
+  filter(!is.na(Gender)) %>%
   group_by(Gender) %>% 
   summarise(count = n())
 datatable(Dist_gender, 
@@ -176,15 +180,15 @@ race_data <- datos_heroes %>%
   # Filtramos los NA 
   filter(!is.na(Race)) %>%
   group_by(Race) %>%
-  count(name = "conteo_personajes") %>%
+  count(name = "Conteo_Marvel") %>%
   ungroup() %>%
-  arrange(desc(conteo_personajes))
+  arrange(desc(Conteo_Marvel))
 
-# Agrupar las razas con menos de 4 personajes en una categoría "Otras Razas"
+# Agruparé las razas con menos de 4 personajes en una categoría "Otras Razas"
 race_conteo_limpio <- race_data %>%
-  mutate(Race = ifelse(conteo_personajes < 4, "Otras Razas", Race)) %>%
+  mutate(Race = ifelse(Conteo_Marvel < 4, "Otras Razas", Race)) %>%
   group_by(Race) %>%
-  summarise(conteo_personajes = sum(conteo_personajes), .groups = 'drop')
+  summarise(Conteo_Marvel = sum(Conteo_Marvel), .groups = 'drop')
 datatable(race_conteo_limpio, caption = "Tipos de razas en Marvel")
 ```
 
@@ -194,6 +198,47 @@ ggplot(race_conteo_limpio, aes(x = "", y = "", fill = Race)) +
   coord_polar("y", start = 0) +
   labs(title = "Distribución de Razas en Marvel") +
   # Añadir etiquetas con los porcentajes
-  geom_text(aes(label = paste0(round(conteo_personajes / sum(conteo_personajes) * 100), "%")),
-            position = position_stack(vjust = 0.5))
+  geom_text(aes(label = paste0(round(Conteo_Marvel / sum(Conteo_Marvel) * 100), "%")),
+            position = position_stack(vjust = 0.5)) +
+  theme_minimal()
 ```
+
+Y a su vez, las razas del Universo DC
+
+```{r race_dc}
+race_data_2 <- datos_heroes %>%
+  #Filtro solamente DC, ya que iremos primero por esta Editorial
+  filter(Publisher %in% c("DC Comics")) %>%
+  # Filtramos los NA 
+  filter(!is.na(Race)) %>%
+  group_by(Race) %>%
+  count(name = "Conteo_DC") %>%
+  ungroup() %>%
+  arrange(desc(Conteo_DC))
+
+# Agruparé las razas con menos de 4 personajes en una categoría "Otras Razas"
+Raza_DC <- race_data_2 %>%
+  mutate(Race = ifelse(Conteo_DC < 4, "Otras Razas", Race)) %>%
+  group_by(Race) %>%
+  summarise(Conteo_DC = sum(Conteo_DC), .groups = 'drop')
+datatable(Raza_DC, caption = "Tipos de razas en DC")
+```
+
+```{r race_grafic_dc, fig.width=9, fig.height=6}
+ggplot(Raza_DC, aes(x = "", y = "", fill = Race)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y", start = 0) +
+  labs(title = "Distribución de Razas en DC") +
+  # Añadir etiquetas con los porcentajes
+  geom_text(aes(label = paste0(round(Conteo_DC / sum(Conteo_DC) * 100), "%")),
+            position = position_stack(vjust = 0.5)) +
+  theme_minimal()
+```
+
+El análisis de estos resultados, demostrados en gráficas de torta y sus data frame, nos indican varias cosas:
+
+Primeramente, tenemos que tener en cuenta las proporciones de personajes por Editorial, en Marvel hay mas personajes que DC. Aún así, podemos observar que en Marvel hay mayor diversidad de Razas, y aunque no sean númericamente amplios, en conjunto aportan variedad a esta Editorial. Pero, casi la mitad de estos personajes son Humanos, ya que la mayoría de personajes tienen orígenes humanos antes de ser Héroes o Villanos.
+
+En el Universo DC, los resultados implican que más de la mitad de personajes son Humanos, pero, también vemos que hay menos razas que en Marvel, podemos influir esto a que esta Editorial se centra menos en explorar múltiples universos que su rival Marvel.
+
+En resumen, las 2 editoriales cuentan con mas personajes humanos, pero aún así con mucha variedad de personajes de otros planetas y universos, fomentando su expansión y variedad de historias que nos pueden dar gracias a estos personajes.
